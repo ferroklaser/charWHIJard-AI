@@ -1,68 +1,96 @@
 import pandas as pd
-from transformers import pipeline
-import argparse
 import os
+import argparse
+import re
+import json
+import time
+from openai import OpenAI
 
-# this is used as our baseline to auto-label some of the reviews for model training
-# creates a csv file that has only the text and label columns
 
-# Simple classification of labels for now (baseline labelling function) -> edit this to include other labels
-def map_to_policy_label(text, pred):
-    label = pred[0]['label']
-    if "www" in text or "http" in text:
-        return "ad-like"
-    elif label == "NEGATIVE":
-        return "Negative"
-    else:
-        return "Positive"
+# EXAMPLE in terminal: python scripts/baseline_auto_labeling.py data/samples/south_dakota_sample.csv
 
-# Main function for labeling
-def auto_label_reviews(input_csv):
+# Initialize OpenAI client using API key (we will be using gpt-4.1-nano for the baseline)
+client = OpenAI(api_key="sk-xxx")  # replace with working key
+
+def gpt_label_review(text: str):
+    """
+    Use GPT-4.1-nano to label a review with:
+    - relevancy_score (0.0-1.0)
+    - is_advertisement (bool)
+    - is_rant_without_review (bool)
+    """
+
+    # Filter out obvious spam and adverts with simple logic checks
+    if len(text.split()) < 3:  # very short so most likely irrelevant
+        return {"relevancy_score": 0.0, "is_advertisement": False, "is_rant_without_review": True}
+    if "http" in text or "www" in text: # likely an advert
+        return {"relevancy_score": 0.0, "is_advertisement": True, "is_rant_without_review": False}
+
+    safe_text = text.replace('\\', '\\\\').replace('"', '\\"').replace('\n', ' ')
+    prompt = f"""
+    You are labeling restaurant reviews with three fields:
+    1. relevancy_score: from 0.0 (not relevant at all) to 1.0 (highly relevant).
+    2. is_advertisement: True if the text looks like spam, promotion, or contains website links (ads). Otherwise False.
+    3. is_rant_without_review: True if it's just angry ranting, insults, or nonsense with no actual review of food/service. Otherwise False.
+
+    Respond in JSON only, with keys: relevancy_score, is_advertisement, is_rant_without_review.
+
+    Review: "{safe_text}"
+    """
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4.1-nano",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0
+        )
+        content = response.choices[0].message.content.strip()
+        # Extract JSON if GPT added extra text
+        match = re.search(r"\{.*\}", content, re.DOTALL)
+        if match:
+            return json.loads(match.group(0))
+        else:
+            return {"relevancy_score": 0.0, "is_advertisement": False, "is_rant_without_review": False}
+    except Exception as e:
+        print(f"GPT failed: {e}")
+        return {"relevancy_score": 0.0, "is_advertisement": False, "is_rant_without_review": False}
+
+def auto_label_reviews(input_csv, sample_n=200, sleep_time=1):
     df = pd.read_csv(input_csv)
 
-    # 100 reviews first
-    df = df.sample(n=100, random_state=42)
-    
     if 'text' not in df.columns:
         raise ValueError("CSV must have a column named 'text'")
-    
-    classifier = pipeline(
-        "text-classification",
-        model="distilbert-base-uncased-finetuned-sst-2-english",
-        tokenizer="distilbert-base-uncased-finetuned-sst-2-english",
-        truncation=True,   # cut long reviews
-        max_length=512     # BERT’s limit
-    )
 
-    # Applying the baseline labelling function
-    print(f"Auto-labeling {len(df)} reviews...")
-    df['label'] = df['text'].apply(lambda t: map_to_policy_label(t, classifier(t)))
-    
-    df_hf = df[['text', 'label']]
+    if sample_n and len(df) > sample_n:
+        df = df.sample(n=sample_n, random_state=42)
 
-    # Determine output file
-    base_name = os.path.basename(input_csv)
-    if "_cleaned" in base_name:
-        output_name = base_name.replace("_cleaned", "_labeled")
-    else:
-        output_name = base_name + "_labeled" # fallback
+    print(f"Labeling {len(df)} reviews...")
 
-    project_root = os.path.dirname(os.path.dirname(input_csv))
-    output_dir = os.path.join(project_root, "labeled")
+    all_labels = []
+    for idx, text in enumerate(df['text'], 1):
+        label = gpt_label_review(text)
+        all_labels.append(label)
+        print(f"[{idx}/{len(df)}] Labeled review: {label}")
+
+        # debugging for in case there are some errors with the output rate
+        # time.sleep(sleep_time)
+
+    labels_df = pd.json_normalize(all_labels)
+
+    df_out = labels_df
+
+    base_name = os.path.basename(input_csv).replace(".csv", "")
+    output_dir = os.path.join(os.path.dirname(input_csv), "baseline_result")
     os.makedirs(output_dir, exist_ok=True)
-
-    output_csv = os.path.join(output_dir, output_name)
-    
-    df_hf.to_csv(output_csv, index=False)
-    print(f"Auto-labeled CSV saved to {output_csv}")
-    return df_hf
+    output_csv = os.path.join(output_dir, f"{base_name}_gpt_baseline.csv")
+    df_out.to_csv(output_csv, index=False)
+    print(f"Saved baseline CSV to: {output_csv}")
+    return df_out
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Auto-label reviews for Hugging Face training")
-    parser.add_argument("input_file", help="Name of CSV file in data/processed (e.g., south_dakota_cleaned.csv)")
+    parser = argparse.ArgumentParser(description="Hybrid GPT+rules baseline labeling")
+    parser.add_argument("input_file", help="CSV file with 'text' column")
+    parser.add_argument("--n", type=int, default=200, help="Number of reviews to sample")
     args = parser.parse_args()
 
-    cleaned_folder = os.path.join("data", "cleaned")
-    input_csv = os.path.join(cleaned_folder, args.input_file)
-    
-    auto_label_reviews(input_csv)
+    auto_label_reviews(args.input_file, sample_n=args.n)
