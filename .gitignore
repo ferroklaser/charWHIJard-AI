@@ -2,3 +2,11 @@ data/raw/*
 data/cleaned/*
 
 models/*
+
+__pycache__/
+*.pyc
+
+review_env/
+
+.env
+*.key

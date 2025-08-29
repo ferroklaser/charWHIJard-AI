@@ -1,4 +1,4 @@
-from transformers import AutoModelForCausaualLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 model_name = "Qwen/Qwen3-8B"
 
@@ -11,9 +11,10 @@ model = AutoModelForCausalLM.from_pretrained(
 )
 def classify_review_qwen(review_text):
     # prepare model for input
-    prompt = "Insert prompt here"
+    prompt = "You are a review classifier. Assign one label only: Positive, Negative, Ad-like, Irrelevant, RantWithoutVisit."
     messages = [
-    {"role": "user", "content": prompt}
+    {"role": "user", "content": prompt},
+    {"role": "user", "content": f"Classify this review: \"{review_text}\". Only give the label."}
     ]
     text = tokenizer.apply_chat_template(
     messages,
