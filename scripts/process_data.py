@@ -57,7 +57,7 @@ for region, files in regions.items():
         output_path = os.path.join(output_dir, output_filename)
 
         if os.path.exists(output_path):
-            print(f"[⏩] Skipping {region} (already exists at {output_path})")
+            print(f"Skipping {region} (already exists at {output_path})")
             continue
 
         process_data(files["meta"], files["review"], output_dir)
