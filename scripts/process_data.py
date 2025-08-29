@@ -10,7 +10,7 @@ def process_data(meta_path, review_path, output_dir="../data/processed"):
     meta_df = pd.read_json(meta_path, lines=True, compression="gzip")
     review_df = pd.read_json(review_path, lines=True, compression="gzip")
 
-    review_df = review_df[["text", "gmap_id"]]
+    review_df = review_df[["text", "pics", "resp", "gmap_id"]]
     review_df = review_df.dropna(subset=["text"])
 
     meta_df["category"] = meta_df["category"].apply(
@@ -24,7 +24,10 @@ def process_data(meta_path, review_path, output_dir="../data/processed"):
         how="left"
     )
 
-    df = df[["name", "category", "text"]].drop_duplicates()
+    df["text_length"] = df["text"].str.len()
+    df["has_pics"] = df["pics"].notna()
+    df["has_response"] = df["resp"].notna()
+    df = df[["name", "category", "text", "text_length", "has_pics", "has_response"]].drop_duplicates()
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -53,13 +56,6 @@ for fname in os.listdir(raw_dir):
 
 for region, files in regions.items():
     if "meta" in files and "review" in files:
-        output_filename = f"{region}.csv"
-        output_path = os.path.join(output_dir, output_filename)
-
-        if os.path.exists(output_path):
-            print(f"Skipping {region} (already exists at {output_path})")
-            continue
-
-        process_data(files["meta"], files["review"], output_dir)
+        process_data(files["meta"], files["review"], output_dir) # Override previous file OR create new if doesn't exist.
     else:
-        print(f"[!] Skipping {region} (missing meta or review file)")
+        print(f"Skipping {region} (missing meta or review file)")
