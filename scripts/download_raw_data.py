@@ -1,3 +1,4 @@
+import gdown
 import os
 import requests
 import gdown
@@ -6,9 +7,10 @@ import gdown
 # This is meant for downloading raw data sets so we can process them using preprocessing scripts
 # Make sure the google drive csv file is set to "anyone w the link can edit the file"
 datasets = {
-    "south_dakota.csv": "https://drive.google.com/uc?export=download&id=175FN8ZY-mnJySrWvN11vLFsRAn1d4rEv",
+    "review-south_dakota.json.gz": "https://drive.google.com/uc?export=download&id=1l7fz0nc7U4N-gmLaKmZxuJS_wnaUIEQS",
+    "meta-south_dakota.json.gz": "https://drive.google.com/uc?export=download&id=1xKfdWKLM_Lbr28PKIAH-75bvGIa1VmLv",
     # Add other datasets here
-}
+    }
 
 os.makedirs("../data/raw", exist_ok=True)
 
