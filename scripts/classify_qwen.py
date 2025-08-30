@@ -9,12 +9,35 @@ model = AutoModelForCausalLM.from_pretrained(
     torch_dtype="auto",
     device_map="auto"
 )
-def classify_review_qwen(review_text):
+def classify_review_qwen(row):
+
+    row_text = (
+        f"Business Name: {row['name']}\n"
+        f"Category: {row['category']}\n"
+        f"Review Text: {row['text']}\n"
+        f"Text Length: {row['text_length']}\n"
+        f"Has Pictures: {row['has_pics']}\n"
+        f"Has Response from business: {row['has_response']}"
+    )
+
     # prepare model for input
-    prompt = "You are a review classifier. Assign one label only: Positive, Negative, Ad-like, Irrelevant, RantWithoutVisit."
+    prompt = """
+    You are a review classifier. Use the information in each row to determination the relevance of the review. 
+
+    The review would be automatically irrelevant  if 
+    1. It is seems like an advertisement. 
+    2. It is spam material. 
+    3. If it seems like the one who wrote the text has yet to visit the establishment they are writing about. 
+    
+    Conversely, the relevance of the review should be based on if content of review is actually related 
+    to the establishment and what they sell, service or provide.
+
+    output strictly in this CSV format:
+    <relevancy score (0-1)>, <is_advertisement (true/false)>, <is_rant_without_review (true/false)>
+    """
     messages = [
     {"role": "user", "content": prompt},
-    {"role": "user", "content": f"Classify this review: \"{review_text}\". Only give the label."}
+    {"role": "user", "content": f"Classify this review: \"{row_text}\". Only give the label."}
     ]
     text = tokenizer.apply_chat_template(
     messages,

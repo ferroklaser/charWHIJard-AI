@@ -5,13 +5,12 @@ import pandas as pd
 from classify_qwen import classify_review_qwen
 
 
-csv_file = "../data/labeled/south_dakota_labeled.csv"  # your CSV file path
+csv_file = "../data/labeled/south_dakota_sample_1.csv"  # your CSV file path
 df = pd.read_csv(csv_file)
 
-N = 10
-subset_df = df.head(N).copy()
+subset_df = df.copy()
 # Create a new column for the predicted labels
-subset_df['predicted_label'] = subset_df['text'].apply(classify_review_qwen)
+subset_df['predicted_label'] = subset_df.apply(classify_review_qwen, axis=1)
 
 # Save to a new CSV
 subset_df.to_csv("../data/labeled/my_reviews_labeled.csv", index=False)
