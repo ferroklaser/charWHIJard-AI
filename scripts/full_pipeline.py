@@ -1,18 +1,47 @@
+import os
 import pandas as pd
 
-# Import your classify function from the previous code
-# from classify_qwen import classify_review_qwen  # if saved in a separate file
+from download_raw_data import download_raw_data
+from process_data import preprocess_all
+from baseline_auto_labeling import auto_label_reviews
 from classify_qwen import classify_review_qwen
+from evaluate_tests import evaluate_labels
 
+RAW_DIR = "../data/raw"
+PROCESSED_DIR = "../data/processed"
+LABELED_DIR = "../data/labeled"
 
-csv_file = "../data/labeled/south_dakota_sample_1.csv"  # your CSV file path
-df = pd.read_csv(csv_file)
+os.makedirs(LABELED_DIR, exist_ok=True)
 
-subset_df = df.copy()
-# Create a new column for the predicted labels
-subset_df['predicted_label'] = subset_df.apply(classify_review_qwen, axis=1)
+def run_pipeline():
+    # Download raw datasets
+    download_raw_data(RAW_DIR)
 
-# Save to a new CSV
-subset_df.to_csv("../data/labeled/my_reviews_labeled.csv", index=False)
+    # Preprocess raw data
+    processed_files = preprocess_all(RAW_DIR, PROCESSED_DIR)
+    
+    for input_csv in processed_files:
+        # GPT-4.1-nano baseline labelling
+        baseline_df, baseline_csv = auto_label_reviews(input_csv, sample_n=200)
 
-print("Finished classifying! Saved to data/labeled/my_reviews_labeled.csv")
+        df = pd.read_csv(input_csv)
+        scores, ads, rants = [], [], []
+        for _, row in df.iterrows():
+            score, is_ad, is_rant = classify_review_qwen(row)
+            scores.append(score)
+            ads.append(is_ad)
+            rants.append(is_rant)
+        df["relevancy_score"] = scores
+        df["is_advertisement"] = ads
+        df["is_rant_without_review"] = rants
+
+        qwen_csv = os.path.join(
+            LABELED_DIR,
+            f"{os.path.basename(input.csv).replace('.csv','')}_qwen_labels.csv"
+        )
+        df.to_csv(qwen_csv, index=False)
+        results_df = evaluate_labels(baseline_csv, qwen_csv)
+    print("Pipeline finished for all regions!")
+
+if __name__ == "__maine__":
+    run_pipeline()

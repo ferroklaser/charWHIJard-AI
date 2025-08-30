@@ -43,19 +43,21 @@ def process_data(meta_path, review_path, output_dir="../data/processed"):
     df.to_csv(output_path, index=False)
     print(f"Processed {region}, saved to {output_path}")
 
-regions = defaultdict(dict)
+def preprocess_all(raw_dir="../data/raw", output_dir="../data/processed"):
+    regions = defaultdict(dict)
 
-for fname in os.listdir(raw_dir):
-    if fname.startswith("review-") and fname.endswith(".json.gz"):
-        region = fname[len("review-"):-len(".json.gz")]
-        regions[region]["review"] = os.path.join(raw_dir, fname)
-    elif fname.startswith("meta-") and fname.endswith(".json.gz"):
-        region = fname[len("meta-"):-len(".json.gz")]
-        regions[region]["meta"] = os.path.join(raw_dir, fname)
-
-
-for region, files in regions.items():
-    if "meta" in files and "review" in files:
-        process_data(files["meta"], files["review"], output_dir) # Override previous file OR create new if doesn't exist.
-    else:
-        print(f"Skipping {region} (missing meta or review file)")
+    for fname in os.listdir(raw_dir):
+        if fname.startswith("review-") and fname.endswith(".json.gz"):
+            region = fname[len("review-"):-len(".json.gz")]
+            regions[region]["review"] = os.path.join(raw_dir, fname)
+        elif fname.startswith("meta-") and fname.endswith(".json.gz"):
+            region = fname[len("meta-"):-len(".json.gz")]
+            regions[region]["meta"] = os.path.join(raw_dir, fname)
+    
+    processed_files = []
+    for region, files in regions.items():
+        if "meta" in files and "review" in files:
+            process_data(files["meta"], files["review"], output_dir) # Override previous file OR create new if doesn't exist.
+        else:
+            print(f"Skipping {region} (missing meta or review file)")
+    return processed_files

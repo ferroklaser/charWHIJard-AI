@@ -86,11 +86,3 @@ def auto_label_reviews(input_csv, sample_n=200, sleep_time=1):
     df_out.to_csv(output_csv, index=False)
     print(f"Saved baseline CSV to: {output_csv}")
     return df_out
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Hybrid GPT+rules baseline labeling")
-    parser.add_argument("input_file", help="CSV file with 'text' column")
-    parser.add_argument("--n", type=int, default=200, help="Number of reviews to sample")
-    args = parser.parse_args()
-
-    auto_label_reviews(args.input_file, sample_n=args.n)
