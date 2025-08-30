@@ -1,0 +1,2 @@
+name,category,text,text_length,has_pics,has_response,predicted_label,relevancy_score,is_advertisement,is_rant_without_review
+Mavericks Steak & Cocktails,Steak house,"It was good, a little pricy, but the wings were great and I enjoyed the service and atmosphere!",95,False,False,"0.85,false,false",0.85,False,False

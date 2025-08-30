@@ -48,10 +48,21 @@ def classify_review_qwen(row):
     model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
     # conduct text completion
-    generated_ids = model.generate(
-    **model_inputs,
-    max_new_tokens=64
-    )
+    with torch.no_grad():
+        generated_ids = model.generate(
+            **model_inputs,
+            max_new_tokens=64
+        )
+
     output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist()
     content = tokenizer.decode(output_ids, skip_special_tokens=True).strip("\n")
-    return content
+
+    parts = [x.strip() for x in content.split(",")]
+    try: 
+        score = float(parts[0]) if len(parts) > 0 else 0.0
+        is_ad = 1 if len(parts) > 1 and parts[1].lower() == "true" else 0
+        is_rant = 1 if len(parts) > 2 and parts[2].lower() == "true" else 0
+    except Exception:
+        score, is_ad, is_rant = 0.0, 0,0 
+
+    return score, is_ad, is_rant

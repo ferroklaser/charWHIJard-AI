@@ -12,22 +12,20 @@ datasets = {
     # Add other datasets here
     }
 
-os.makedirs("../data/raw", exist_ok=True)
+RAW_DIR = "../data/raw"
 
-for filename, url in datasets.items():
-    output_path = os.path.join("../data/raw", filename)
-    if os.path.exists(output_path):
-        print(f"{filename} already exists, skipping download.")
-        continue
+def download_raw_data():
+    os.makedirs("../data/raw", exist_ok=True)
 
-    print(f"downloading {filename}")
-    try:
-        gdown.download(url, output_path, quiet=False)
-        # response = requests.get(url, stream=True)
-        # response.raise_for_status()
-        # with open(output_path, "wb") as f:
-        #     for chunk in response.iter_content(chunk_size=8192):
-        #         f.write(chunk)
-        print(f"{filename} downloaded")
-    except Exception as e:
-        print(f"Failed to download {filename}: {e}")
+    for filename, url in datasets.items():
+        output_path = os.path.join("../data/raw", filename)
+        if os.path.exists(output_path):
+            print(f"{filename} already exists, skipping download.")
+            continue
+
+        print(f"downloading {filename}")
+        try:
+            gdown.download(url, output_path, quiet=False)
+            print(f"{filename} downloaded")
+        except Exception as e:
+            print(f"Failed to download {filename}: {e}")
