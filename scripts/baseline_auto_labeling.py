@@ -10,7 +10,7 @@ from openai import OpenAI
 # EXAMPLE in terminal: python scripts/baseline_auto_labeling.py data/samples/south_dakota_sample.csv
 
 # Initialize OpenAI client using API key (we will be using gpt-4.1-nano for the baseline)
-client = OpenAI(api_key="sk-xxx")  # replace with working key
+client = OpenAI(api_key="xxx")  # replace with working key
 
 def gpt_label_review(text: str):
     """
